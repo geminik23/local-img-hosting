@@ -18,7 +18,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let path = std::env::var("IMAGEHOSTING_PATH").expect("no env var IMAGEHOSTING_PATH");
 
-    app.at("/images/*").serve_dir(path)?;
+    app.at("/images").serve_dir(path)?;
 
     app.listen("0.0.0.0:8000").await?;
     Ok(())
