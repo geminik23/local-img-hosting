@@ -1,12 +1,15 @@
 #[macro_use]
 extern crate log;
 
-use async_std::{fs::File, io::copy};
+use async_std::{
+    fs::{remove_file, File},
+    io::copy,
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
 use tide::prelude::*;
-use tide::{Body, Request, Response};
+use tide::Request;
 //
 // async fn req_upload(request: Request<_>) {
 //
@@ -33,10 +36,48 @@ struct Task {
     filename: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct DelTask {
+    url: String,
+}
+
 #[derive(Serialize, Debug)]
 struct ResTask {
     result: String,
-    path: String,
+    path: Option<String>,
+}
+
+async fn req_v2_hosting_del(mut req: Request<State>) -> tide::Result {
+    let DelTask { url } = req.body_json().await?;
+    let mut s = false;
+    info!("REQ REMOVE : {}", url);
+
+    let state = req.state();
+
+    // create folder
+    let img_path = state.abs_path.as_str();
+    let img_path = Path::new(img_path);
+    let target_path = img_path.join(&url);
+
+    // open file
+    let file = File::open(&target_path).await;
+    if file.is_ok() {
+        let result = remove_file(&target_path).await;
+        s = result.is_ok();
+        if s {
+            info!("... removed {}", url);
+        }
+    }
+
+    let res = json!(ResTask {
+        result: if s {
+            String::from("ok")
+        } else {
+            String::from("error")
+        },
+        path: None,
+    });
+    Ok(res.into())
 }
 
 async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
@@ -80,9 +121,9 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
             String::from("error")
         },
         path: if s {
-            String::from(new_path.unwrap())
+            Some(String::from(new_path.unwrap()))
         } else {
-            String::from("")
+            None
         },
     });
 
@@ -99,7 +140,9 @@ async fn main() -> Result<(), std::io::Error> {
     let mut app = tide::with_state(State::new(img_path.clone()));
 
     app.at("/images").serve_dir(img_path)?;
-    app.at("/v2/hosting").post(req_v2_hosting);
+    app.at("/v2/hosting")
+        .post(req_v2_hosting)
+        .delete(req_v2_hosting_del);
 
     app.listen("0.0.0.0:8000").await?;
     Ok(())
