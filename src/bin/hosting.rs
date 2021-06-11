@@ -94,21 +94,29 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
     let img_path = state.abs_path.as_str();
     let img_path = Path::new(img_path);
     let target_path = img_path.join(&path);
+
+    info!("requested - download path {:?}", target_path);
     // info!("target path {:?}", target_path);
-    async_std::fs::create_dir_all(&target_path).await?;
+    if let Err(err) = async_std::fs::create_dir_all(&target_path).await {
+        error!("failed to create directory {:?}", err);
+    }
 
     let target_path = target_path.join(&filename);
-    info!("requested - download path {:?}", target_path);
 
     // download
     let mut s = false;
     let res = surf::get(&link).await;
-    if let Ok(mut res) = res {
-        let mut dest = File::create(target_path).await?;
-        let content = res.body_bytes().await.unwrap();
-        let mut content = &content[..];
+    match res {
+        Ok(mut res) => {
+            let mut dest = File::create(target_path).await?;
+            let content = res.body_bytes().await.unwrap();
+            let mut content = &content[..];
 
-        s = copy(&mut content, &mut dest).await.is_ok();
+            s = copy(&mut content, &mut dest).await.is_ok();
+        }
+        Err(err) => {
+            error!("failed to download {:?} {:?}", target_path, err);
+        }
     }
 
     let new_path = Path::new("/images").join(&path).join(&filename);
