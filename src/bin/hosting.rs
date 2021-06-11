@@ -131,6 +131,22 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
     Ok(res.into())
 }
 
+#[derive(Serialize, Debug)]
+struct ResStorage {
+    pub total: u64,
+    pub usage: u64,
+}
+
+async fn req_storage(mut req: Request<State>) -> tide::Result {
+    info!("REQ GET storage");
+    let res = ResStorage {
+        total: 0u64,
+        usage: 0u64,
+    };
+
+    Ok(json!(res).into())
+}
+
 #[async_std::main]
 async fn main() -> Result<(), std::io::Error> {
     let _ = dotenv::dotenv().ok();
@@ -143,6 +159,7 @@ async fn main() -> Result<(), std::io::Error> {
     app.at("/v2/hosting")
         .post(req_v2_hosting)
         .delete(req_v2_hosting_del);
+    app.at("/v2/storage").get(req_storage);
 
     app.listen("0.0.0.0:8000").await?;
     Ok(())
