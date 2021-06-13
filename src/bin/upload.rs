@@ -168,6 +168,6 @@ async fn main() -> Result<(), std::io::Error> {
         .delete(req_v2_hosting_del);
     app.at("/v2/storage").get(req_storage);
 
-    app.listen("0.0.0.0:8000").await?;
+    app.listen("0.0.0.0:8001").await?;
     Ok(())
 }
