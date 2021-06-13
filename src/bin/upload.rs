@@ -145,7 +145,7 @@ struct ResStorage {
     pub usage: u64,
 }
 
-async fn req_storage(mut req: Request<State>) -> tide::Result {
+async fn req_storage(mut _req: Request<State>) -> tide::Result {
     info!("REQ GET storage");
     let res = ResStorage {
         total: 0u64,
@@ -163,7 +163,6 @@ async fn main() -> Result<(), std::io::Error> {
 
     let mut app = tide::with_state(State::new(img_path.clone()));
 
-    app.at("/images").serve_dir(img_path)?;
     app.at("/v2/hosting")
         .post(req_v2_hosting)
         .delete(req_v2_hosting_del);

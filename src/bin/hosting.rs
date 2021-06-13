@@ -30,7 +30,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let mut app = tide::with_state(State::new(img_path.clone()));
 
-    app.at("/").serve_dir(img_path)?;
+    app.at("/images").serve_dir(img_path)?;
     app.listen("0.0.0.0:8000").await?;
     Ok(())
 }
