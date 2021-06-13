@@ -5,6 +5,8 @@ use async_std::{
     fs::{remove_file, File},
     io::copy,
 };
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -19,12 +21,30 @@ use tide::Request;
 #[derive(Clone)]
 struct State {
     abs_path: Arc<String>,
+    user_agents: Arc<Vec<String>>,
 }
 
 impl State {
     fn new(path: String) -> Self {
+        let ua = vec![
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+            "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.3".into(),
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+        ];
         Self {
             abs_path: Arc::new(path),
+            user_agents: Arc::new(ua),
+        }
+    }
+
+    fn get_user_agent(&self) -> String {
+        let mut rng = thread_rng();
+        let value = self.user_agents.choose(&mut rng);
+        match value {
+            Some(v) => v.clone(),
+            None => "".into(),
         }
     }
 }
@@ -105,7 +125,10 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
 
     // download
     let mut s = false;
-    let res = surf::get(&link).await;
+    let res = surf::get(&link)
+        .header("user-agent", state.get_user_agent())
+        .send()
+        .await;
     match res {
         Ok(mut res) => {
             let mut dest = File::create(target_path).await?;
