@@ -70,22 +70,36 @@ struct ResTask {
 async fn req_v2_hosting_del(mut req: Request<State>) -> tide::Result {
     let DelTask { url } = req.body_json().await?;
     let mut s = false;
-    info!("REQ REMOVE : {}", url);
 
     let state = req.state();
+
+    let mut url = Path::new(&url);
+    match url.strip_prefix("/images/") {
+        Ok(result) => {
+            url = result;
+        }
+        Err(_) => {
+            if let Ok(result) = url.strip_prefix("/") {
+                url = result;
+            }
+        }
+    }
 
     // create folder
     let img_path = state.abs_path.as_str();
     let img_path = Path::new(img_path);
     let target_path = img_path.join(&url);
 
-    // open file
-    let file = File::open(&target_path).await;
-    if file.is_ok() {
-        let result = remove_file(&target_path).await;
-        s = result.is_ok();
-        if s {
-            info!("... removed {}", url);
+    info!("REQ REMOVE  target path : {:?}", target_path);
+
+    // remove the file
+    match remove_file(&target_path).await {
+        Ok(_) => {
+            info!("... removed {:?}", url);
+            s = true;
+        }
+        Err(err) => {
+            error!("Failed to open file {:?} : {:?}", url, err);
         }
     }
 
@@ -174,6 +188,7 @@ async fn req_storage(mut _req: Request<State>) -> tide::Result {
         total: 0u64,
         usage: 0u64,
     };
+    // TODO implement later
 
     Ok(json!(res).into())
 }
@@ -183,6 +198,7 @@ async fn main() -> Result<(), std::io::Error> {
     let _ = dotenv::dotenv().ok();
     env_logger::init();
     let img_path = std::env::var("IMAGEHOSTING_PATH").expect("no env var IMAGEHOSTING_PATH");
+    info!("local image folder is {}", img_path);
 
     let mut app = tide::with_state(State::new(img_path.clone()));
 
