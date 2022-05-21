@@ -27,11 +27,16 @@ struct State {
 impl State {
     fn new(path: String) -> Self {
         let ua = vec![
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
-            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36".into(),
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36".into(),
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36".into(),
             "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.3".into(),
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36".into(),
+            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36".into(),
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0".into(),
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 12.4; rv:100.0) Gecko/20100101 Firefox/100.0".into(),
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0".into(),
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36 Edg/100.0.1185.39".into(),
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36 Edg/100.0.1185.39".into(),
         ];
         Self {
             abs_path: Arc::new(path),
@@ -114,6 +119,16 @@ async fn req_v2_hosting_del(mut req: Request<State>) -> tide::Result {
     Ok(res.into())
 }
 
+
+
+use isahc::prelude::*;
+
+async fn get_image_data(user_agent:String, image_url:&str)->Result<Vec<u8>, isahc::Error>{
+    let data = isahc::Request::get(image_url).header("user-agent", user_agent).body(()).unwrap().send_async().await?.bytes().await?;
+    Ok(data)
+}
+
+
 async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
     let Task {
         path,
@@ -139,15 +154,17 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
 
     // download
     let mut s = false;
-    let res = surf::get(&link)
-        .header("user-agent", state.get_user_agent())
-        .send()
-        .await;
+
+    let res = get_image_data(state.get_user_agent(), &link).await;
+        // surf::get(&link)
+        // .header("user-agent", state.get_user_agent())
+        // .send()
+        // .await;
     match res {
-        Ok(mut res) => {
+        Ok(res) => {
             let mut dest = File::create(target_path).await?;
-            let content = res.body_bytes().await.unwrap();
-            let mut content = &content[..];
+            // let content = res.body_bytes().await.unwrap();
+            let mut content = &res[..];
 
             s = copy(&mut content, &mut dest).await.is_ok();
         }
