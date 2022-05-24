@@ -196,16 +196,24 @@ async fn req_v2_hosting(mut req: Request<State>) -> tide::Result {
 #[derive(Serialize, Debug)]
 struct ResStorage {
     pub total: u64,
-    pub usage: u64,
+    pub free: u64,
 }
 
-async fn req_storage(mut _req: Request<State>) -> tide::Result {
+async fn req_storage(mut req: Request<State>) -> tide::Result {
     info!("REQ GET storage");
-    let res = ResStorage {
+    let mut res = ResStorage {
         total: 0u64,
-        usage: 0u64,
+        free: 0u64,
     };
-    // TODO implement later
+
+    let state = req.state();
+    let img_path = state.abs_path.as_str();
+    if let Some(path) = std::path::Path::new(img_path).parent(){
+        if let Ok(fstats) = fs4::statvfs(path){
+            res.total = fstats.total_space();
+            res.free = fstats.free_space();
+        }
+    }
 
     Ok(json!(res).into())
 }
@@ -227,3 +235,7 @@ async fn main() -> Result<(), std::io::Error> {
     app.listen("0.0.0.0:8001").await?;
     Ok(())
 }
+
+
+
+

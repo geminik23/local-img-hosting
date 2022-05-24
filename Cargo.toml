@@ -17,4 +17,5 @@ surf = "2.2.0"
 log = { version = "0.4.13", features = ["kv_unstable_std"] }
 rand = "0.8.3"
 isahc = { version="1.7", features = ["json"] }
+fs4 = { version = "0.5", features = ["tokio-async"] }
 # block-utils = "0.10"
